@@ -46,7 +46,6 @@ export default function TVPage() {
   )
 
   const top3 = data.employees.slice(0, 3)
-  const others = data.employees.slice(3)
   const maxCoins = Math.max(...data.employees.map(e => e.monthCoins), 1)
 
   const sectorMap = new Map<string, { coins: number; leader: string }>()
@@ -57,6 +56,12 @@ export default function TVPage() {
   const sectors = Array.from(sectorMap.entries()).sort((a, b) => b[1].coins - a[1].coins)
   const maxSectorCoins = Math.max(...sectors.map(s => s[1].coins), 1)
   const sectorColors = ['#F59E0B','#3B82F6','#10B981','#8B5CF6','#EF4444','#06B6D4','#F97316','#EC4899']
+
+  // Pódio: [2º, 1º, 3º]
+  const podiumOrder = [top3[1], top3[0], top3[2]]
+  const podiumHeights = ['70px', '100px', '55px']
+  const podiumIcons = ['🥈','🥇','🥉']
+  const podiumColors = ['from-slate-400 to-slate-500','from-amber-400 to-amber-600','from-amber-700 to-amber-800']
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col" style={{ fontFamily: 'Sora, sans-serif' }}>
@@ -81,32 +86,43 @@ export default function TVPage() {
         <div className="flex flex-col gap-4">
           {/* Pódio */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-3">🏆 Pódio do Mês</h2>
-            <div className="flex items-end justify-center gap-3" style={{ height: '140px' }}>
-              {[top3[1], top3[0], top3[2]].map((emp, idx) => {
-                if (!emp) return <div key={idx} className="flex-1" />
-                const isFirst = emp.rank === 1
-                const heights = ['80px', '112px', '64px']
-                const icons   = ['🥈','🥇','🥉']
-                const colors  = ['from-slate-400 to-slate-500','from-amber-400 to-amber-600','from-amber-700 to-amber-800']
-                return (
-                  <div key={emp.rank} className="flex-1 flex flex-col items-center gap-1">
-                    <p className="text-xl">{icons[idx]}</p>
-                    <p className={`font-bold text-center leading-tight ${isFirst ? 'text-amber-400 text-sm' : 'text-slate-200 text-xs'}`} style={{ maxWidth: '120px' }}>{emp.employeeName}</p>
-                    <p className="text-xs text-slate-400 truncate" style={{ maxWidth: '100px' }}>{emp.sectorName}</p>
-                    <div className={`w-full bg-gradient-to-t ${colors[idx]} rounded-t-lg flex items-end justify-center pb-1`} style={{ height: heights[idx] }}>
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">🏆 Pódio do Mês</h2>
+            {/* Nomes acima das barras */}
+            <div className="flex gap-3 mb-2">
+              {podiumOrder.map((emp, idx) => (
+                <div key={idx} className="flex-1 text-center">
+                  {emp ? (
+                    <>
+                      <p className="text-lg leading-none mb-1">{podiumIcons[idx]}</p>
+                      <p className={`font-bold leading-tight text-xs ${emp.rank === 1 ? 'text-amber-400' : 'text-slate-200'}`}
+                        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {emp.employeeName}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{emp.sectorName}</p>
+                    </>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            {/* Barras do pódio */}
+            <div className="flex items-end gap-3">
+              {podiumOrder.map((emp, idx) => (
+                <div key={idx} className="flex-1">
+                  {emp ? (
+                    <div className={`w-full bg-gradient-to-t ${podiumColors[idx]} rounded-t-lg flex items-end justify-center pb-1`}
+                      style={{ height: podiumHeights[idx] }}>
                       <span className="text-xs font-bold text-slate-900">{emp.monthCoins.toFixed(1)}</span>
                     </div>
-                  </div>
-                )
-              })}
+                  ) : <div style={{ height: podiumHeights[idx] }} />}
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Ranking Geral */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex-1">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-3">📊 Ranking Geral</h2>
-            <div ref={scrollRef} className="overflow-hidden space-y-2" style={{ maxHeight: '300px' }}>
+            <div ref={scrollRef} className="overflow-hidden space-y-2" style={{ maxHeight: '280px' }}>
               {data.employees.map(emp => (
                 <div key={emp.rank} className="flex items-center gap-2">
                   <span className="text-sm w-6 text-center shrink-0">

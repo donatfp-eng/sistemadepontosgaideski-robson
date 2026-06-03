@@ -427,7 +427,9 @@ route('GET', '/api/ranking/tv', async (req, res) => {
   const results = await Promise.all(empList.map(async (emp) => {
     const [weRow] = await db.select({ sum: sql<string>`COALESCE(SUM(coins::numeric),0)` }).from(weeklyEntries).where(and(eq(weeklyEntries.employeeId, emp.id), sql`week_start >= ${start}`, sql`week_end <= ${end}`))
     const [qzRow] = await db.select({ sum: sql<string>`COALESCE(SUM(coins::numeric),0)` }).from(quizEntries).where(and(eq(quizEntries.employeeId, emp.id), eq(quizEntries.month, month), eq(quizEntries.year, year)))
-    return { employeeId: emp.id, employeeName: emp.name, sectorId: emp.sectorId, sectorName: emp.sectorName, monthCoins: Math.round((Number(weRow.sum)+Number(qzRow.sum))*100)/100 }
+    const [crRow] = await db.select({ sum: sql<string>`COALESCE(SUM(coins::numeric),0)` }).from(candidateReferrals).where(and(eq(candidateReferrals.employeeId, emp.id), sql`referral_date >= ${start}`, sql`referral_date <= ${end}`))
+    const [clRow] = await db.select({ sum: sql<string>`COALESCE(SUM(coins::numeric),0)` }).from(clientReferrals).where(and(eq(clientReferrals.employeeId, emp.id), sql`referral_date >= ${start}`, sql`referral_date <= ${end}`))
+    return { employeeId: emp.id, employeeName: emp.name, sectorId: emp.sectorId, sectorName: emp.sectorName, monthCoins: Math.round((Number(weRow.sum)+Number(qzRow.sum)+Number(crRow.sum)+Number(clRow.sum))*100)/100 }
   }))
   res.status(200).json({ month, year, employees: results.sort((a,b)=>b.monthCoins-a.monthCoins).map((r,i)=>({rank:i+1,...r})), coinValueBrl: Number(cfg?.coinValueBrl??1.25) })
 })

@@ -9,6 +9,15 @@ interface TVData {
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
+function getUrlParams() {
+  const p = new URLSearchParams(window.location.search)
+  const now = new Date()
+  return {
+    month: p.has('month') ? Number(p.get('month')) : now.getMonth() + 1,
+    year:  p.has('year')  ? Number(p.get('year'))  : now.getFullYear(),
+  }
+}
+
 export default function TVPage() {
   const [data, setData] = useState<TVData | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -17,7 +26,8 @@ export default function TVPage() {
 
   async function load() {
     try {
-      const r = await fetch('/api/ranking/tv')
+      const { month, year } = getUrlParams()
+      const r = await fetch(`/api/ranking/tv?month=${month}&year=${year}`)
       if (r.ok) setData(await r.json())
     } catch {}
   }
@@ -63,6 +73,9 @@ export default function TVPage() {
   const podiumIcons = ['🥈','🥇','🥉']
   const podiumColors = ['from-slate-400 to-slate-500','from-amber-400 to-amber-600','from-amber-700 to-amber-800']
 
+  const now = new Date()
+  const isCurrentMonth = data.month === now.getMonth() + 1 && data.year === now.getFullYear()
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col" style={{ fontFamily: 'Sora, sans-serif' }}>
       {/* Header */}
@@ -75,8 +88,11 @@ export default function TVPage() {
           </div>
         </div>
         <div className="text-right">
-          <p className="text-amber-400 font-bold text-lg">{MONTHS[data.month - 1]} {data.year}</p>
-          <p className="text-xs text-slate-400">Atualiza a cada 30s</p>
+          <p className="text-amber-400 font-bold text-lg">
+            {MONTHS[data.month - 1]} {data.year}
+            {!isCurrentMonth && <span className="ml-2 text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">Histórico</span>}
+          </p>
+          <p className="text-xs text-slate-400">{isCurrentMonth ? 'Atualiza a cada 30s' : 'Mês encerrado'}</p>
         </div>
       </div>
 

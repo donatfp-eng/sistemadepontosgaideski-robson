@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface TVEmployee {
   rank: number; employeeName: string; sectorName: string; monthCoins: number
@@ -9,30 +10,40 @@ interface TVData {
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-function getUrlParams() {
-  const p = new URLSearchParams(window.location.search)
-  const now = new Date()
-  return {
-    month: p.has('month') ? Number(p.get('month')) : now.getMonth() + 1,
-    year:  p.has('year')  ? Number(p.get('year'))  : now.getFullYear(),
-  }
-}
-
 export default function TVPage() {
+  const now = new Date()
+  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [year, setYear] = useState(now.getFullYear())
   const [data, setData] = useState<TVData | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollPos = useRef(0)
   const scrollDir = useRef(1)
 
-  async function load() {
+  const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear()
+
+  function prevMonth() {
+    if (month === 1) { setMonth(12); setYear(y => y - 1) }
+    else setMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (isCurrentMonth) return
+    if (month === 12) { setMonth(1); setYear(y => y + 1) }
+    else setMonth(m => m + 1)
+  }
+
+  async function load(m: number, y: number) {
     try {
-      const { month, year } = getUrlParams()
-      const r = await fetch(`/api/ranking/tv?month=${month}&year=${year}`)
+      const r = await fetch(`/api/ranking/tv?month=${m}&year=${y}`)
       if (r.ok) setData(await r.json())
     } catch {}
   }
 
-  useEffect(() => { load(); const t = setInterval(() => { load() }, 30000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+    load(month, year)
+    if (!isCurrentMonth) return
+    const t = setInterval(() => load(month, year), 30000)
+    return () => clearInterval(t)
+  }, [month, year])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -67,14 +78,10 @@ export default function TVPage() {
   const maxSectorCoins = Math.max(...sectors.map(s => s[1].coins), 1)
   const sectorColors = ['#F59E0B','#3B82F6','#10B981','#8B5CF6','#EF4444','#06B6D4','#F97316','#EC4899']
 
-  // Pódio: [2º, 1º, 3º]
   const podiumOrder = [top3[1], top3[0], top3[2]]
   const podiumHeights = ['70px', '100px', '55px']
   const podiumIcons = ['🥈','🥇','🥉']
   const podiumColors = ['from-slate-400 to-slate-500','from-amber-400 to-amber-600','from-amber-700 to-amber-800']
-
-  const now = new Date()
-  const isCurrentMonth = data.month === now.getMonth() + 1 && data.year === now.getFullYear()
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col" style={{ fontFamily: 'Sora, sans-serif' }}>
@@ -87,12 +94,32 @@ export default function TVPage() {
             <p className="text-xs text-slate-400">Sistema de Gamificação</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-amber-400 font-bold text-lg">
-            {MONTHS[data.month - 1]} {data.year}
-            {!isCurrentMonth && <span className="ml-2 text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">Histórico</span>}
-          </p>
-          <p className="text-xs text-slate-400">{isCurrentMonth ? 'Atualiza a cada 30s' : 'Mês encerrado'}</p>
+
+        {/* Seletor de mês */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
+            <button onClick={prevMonth} className="p-1 rounded-lg hover:bg-slate-700 transition-colors">
+              <ChevronLeft size={16} className="text-slate-400" />
+            </button>
+            <span className="text-amber-400 font-bold text-base min-w-40 text-center">
+              {MONTHS[month - 1]} {year}
+            </span>
+            <button
+              onClick={nextMonth}
+              disabled={isCurrentMonth}
+              className="p-1 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={16} className="text-slate-400" />
+            </button>
+          </div>
+          {!isCurrentMonth && (
+            <span className="text-xs text-slate-400 bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl">
+              Histórico
+            </span>
+          )}
+          {isCurrentMonth && (
+            <span className="text-xs text-slate-400">Atualiza a cada 30s</span>
+          )}
         </div>
       </div>
 
@@ -103,7 +130,6 @@ export default function TVPage() {
           {/* Pódio */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">🏆 Pódio do Mês</h2>
-            {/* Nomes acima das barras */}
             <div className="flex gap-3 mb-2">
               {podiumOrder.map((emp, idx) => (
                 <div key={idx} className="flex-1 text-center">
@@ -120,7 +146,6 @@ export default function TVPage() {
                 </div>
               ))}
             </div>
-            {/* Barras do pódio */}
             <div className="flex items-end gap-3">
               {podiumOrder.map((emp, idx) => (
                 <div key={idx} className="flex-1">

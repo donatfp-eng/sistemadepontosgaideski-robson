@@ -227,13 +227,15 @@ route('DELETE', '/api/users/:id', async (req, res) => {
 route('GET', '/api/supervisors/my-team', async (req, res) => {
   const user = await requireSupervisorOrAdmin(req, res); if (!user) return
   const db = getDb()
+  const allTeam = await db.select({ id: employees.id, name: employees.name, email: employees.email, role: employees.role, sectorId: employees.sectorId, sectorName: sectors.name })
+    .from(employees).leftJoin(sectors, eq(employees.sectorId, sectors.id)).where(eq(employees.active, true)).orderBy(employees.name)
+  // Admin vê todos os colaboradores; supervisor vê apenas os vinculados
+  if (user.role === 'admin') return void res.status(200).json(allTeam)
   const assignments = await db.select({ employeeId: supervisorAssignments.employeeId }).from(supervisorAssignments)
     .where(and(eq(supervisorAssignments.supervisorId, user.userId), isNull(supervisorAssignments.removedAt)))
   if (!assignments.length) return void res.status(200).json([])
   const ids = assignments.map(a => a.employeeId)
-  const team = await db.select({ id: employees.id, name: employees.name, email: employees.email, role: employees.role, sectorId: employees.sectorId, sectorName: sectors.name })
-    .from(employees).leftJoin(sectors, eq(employees.sectorId, sectors.id)).where(eq(employees.active, true)).orderBy(employees.name)
-  res.status(200).json(team.filter(e => ids.includes(e.id)))
+  res.status(200).json(allTeam.filter(e => ids.includes(e.id)))
 })
 route('GET', '/api/supervisors', async (req, res) => {
   const user = await requireAuth(req, res); if (!user) return
@@ -417,7 +419,9 @@ route('GET', '/api/ranking/tv', async (req, res) => {
   const db = getDb()
   const empList = await db.select({ id: employees.id, name: employees.name, sectorId: employees.sectorId, sectorName: sectors.name }).from(employees).leftJoin(sectors, eq(employees.sectorId, sectors.id)).where(eq(employees.active, true)).orderBy(employees.name)
   const [cfg] = await db.select().from(coinConfig).limit(1)
-  const now = new Date(); const year = now.getFullYear(); const month = now.getMonth() + 1
+  const now = new Date()
+  const year  = req.query.year  ? Number(req.query.year)  : now.getFullYear()
+  const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1
   const start = `${year}-${String(month).padStart(2,'0')}-01`
   const end = `${year}-${String(month).padStart(2,'0')}-${new Date(year, month, 0).getDate()}`
   const results = await Promise.all(empList.map(async (emp) => {

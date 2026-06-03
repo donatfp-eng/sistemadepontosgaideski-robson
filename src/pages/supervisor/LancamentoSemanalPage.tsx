@@ -6,6 +6,13 @@ import { Save } from 'lucide-react'
 
 interface TeamEmployee { id: number; name: string; sectorName: string }
 interface WeeklyEntry { employeeId: number; punctual: boolean; attended: boolean; sport: boolean; taskProcessPct: number | null }
+interface CoinConfig {
+  punctualityCoinsPerWeek: number
+  attendanceCoinsPerWeek: number
+  sportCoinsPerEntry: number
+  taskProcessMaxScore: number
+  taskProcessMaxCoins: number
+}
 
 export default function LancamentoSemanalPage() {
   const qc = useQueryClient()
@@ -17,6 +24,11 @@ export default function LancamentoSemanalPage() {
   const { data: team = [] } = useQuery<TeamEmployee[]>({
     queryKey: ['my-team'],
     queryFn: () => api.get('/supervisors/my-team'),
+  })
+
+  const { data: cfg } = useQuery<CoinConfig>({
+    queryKey: ['coin-config'],
+    queryFn: () => api.get('/coin-config'),
   })
 
   const { data: existing = [] } = useQuery<any[]>({
@@ -76,6 +88,14 @@ export default function LancamentoSemanalPage() {
             className="bg-input border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div className="text-sm text-muted-foreground mt-5">→ Fim: <strong className="text-foreground">{addDays(weekStart, 6)}</strong></div>
+        {cfg && (
+          <div className="ml-auto flex gap-4 text-xs text-muted-foreground">
+            <span>Pont. <strong className="text-amber-400">{cfg.punctualityCoinsPerWeek} 🪙</strong></span>
+            <span>Assid. <strong className="text-amber-400">{cfg.attendanceCoinsPerWeek} 🪙</strong></span>
+            <span>Esporte <strong className="text-amber-400">{cfg.sportCoinsPerEntry} 🪙</strong></span>
+            <span>Tarefas <strong className="text-amber-400">até {cfg.taskProcessMaxCoins} 🪙</strong></span>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -98,7 +118,7 @@ export default function LancamentoSemanalPage() {
             )}
             {team.map((emp, i) => {
               const e = entries[emp.id]
-              const coins = calcPreview(e)
+              const coins = calcPreview(e, cfg)
               return (
                 <tr key={emp.id} className={`border-b border-border/50 hover:bg-secondary/20 transition-colors ${i % 2 === 0 ? '' : 'bg-secondary/10'}`}>
                   <td className="px-4 py-3 font-medium text-foreground">{emp.name}</td>
@@ -133,12 +153,12 @@ function addDays(dateStr: string, days: number) {
   return d.toISOString().split('T')[0]
 }
 
-function calcPreview(e?: WeeklyEntry) {
-  if (!e) return 0
+function calcPreview(e?: WeeklyEntry, cfg?: CoinConfig) {
+  if (!e || !cfg) return 0
   let c = 0
-  if (e.punctual) c += 1
-  if (e.attended) c += 1
-  if (e.sport)    c += 1
-  if (e.taskProcessPct != null) c += (e.taskProcessPct / 100) * 10
+  if (e.punctual) c += Number(cfg.punctualityCoinsPerWeek)
+  if (e.attended) c += Number(cfg.attendanceCoinsPerWeek)
+  if (e.sport)    c += Number(cfg.sportCoinsPerEntry)
+  if (e.taskProcessPct != null) c += (e.taskProcessPct / Number(cfg.taskProcessMaxScore)) * Number(cfg.taskProcessMaxCoins)
   return Math.round(c * 100) / 100
 }
